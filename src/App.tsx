@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, Menu, X, Star, Download, Calendar, Users, TrendingUp } from 'lucide-react'
+import { Search, Menu, X, Star, Download, Calendar, Users, TrendingUp, GitBranch, Package, Shield, Zap } from 'lucide-react'
 import { Button } from './components/ui/button'
 import { Input } from './components/ui/input'
 import { Badge } from './components/ui/badge'
@@ -16,6 +16,11 @@ interface Distribution {
   logo: string
   popularity: number
   website: string
+  packageType: string[]
+  architecture: string[]
+  basedOn: string
+  releaseModel: string
+  features: string[]
 }
 
 const mockDistributions: Distribution[] = [
@@ -30,7 +35,12 @@ const mockDistributions: Distribution[] = [
     category: 'Desktop',
     logo: '🐧',
     popularity: 95,
-    website: 'https://ubuntu.com'
+    website: 'https://ubuntu.com',
+    packageType: ['DEB', 'Snap', 'Flatpak'],
+    architecture: ['x86_64', 'ARM64', 'ARM'],
+    basedOn: 'Debian',
+    releaseModel: 'Fixed',
+    features: ['LTS Support', 'Enterprise Ready', 'Large Community', 'Hardware Support']
   },
   {
     id: '2',
@@ -43,7 +53,12 @@ const mockDistributions: Distribution[] = [
     category: 'Advanced',
     logo: '⚡',
     popularity: 88,
-    website: 'https://archlinux.org'
+    website: 'https://archlinux.org',
+    packageType: ['Pacman', 'AUR', 'Flatpak'],
+    architecture: ['x86_64', 'ARM64'],
+    basedOn: 'Independent',
+    releaseModel: 'Rolling',
+    features: ['Rolling Release', 'Minimalist', 'DIY Philosophy', 'AUR Repository']
   },
   {
     id: '3',
@@ -56,7 +71,12 @@ const mockDistributions: Distribution[] = [
     category: 'Desktop',
     logo: '🎩',
     popularity: 82,
-    website: 'https://fedoraproject.org'
+    website: 'https://fedoraproject.org',
+    packageType: ['RPM', 'Flatpak', 'AppImage'],
+    architecture: ['x86_64', 'ARM64', 'ARM'],
+    basedOn: 'Independent',
+    releaseModel: 'Fixed',
+    features: ['Latest Software', 'SELinux', 'GNOME Default', 'Red Hat Backing']
   },
   {
     id: '4',
@@ -69,7 +89,12 @@ const mockDistributions: Distribution[] = [
     category: 'Server',
     logo: '🌀',
     popularity: 85,
-    website: 'https://debian.org'
+    website: 'https://debian.org',
+    packageType: ['DEB', 'Flatpak'],
+    architecture: ['x86_64', 'ARM64', 'ARM', 'i386'],
+    basedOn: 'Independent',
+    releaseModel: 'Fixed',
+    features: ['Rock Solid', 'Huge Repository', 'Multiple Architectures', 'Free Software']
   },
   {
     id: '5',
@@ -82,7 +107,12 @@ const mockDistributions: Distribution[] = [
     category: 'Desktop',
     logo: '🦎',
     popularity: 75,
-    website: 'https://opensuse.org'
+    website: 'https://opensuse.org',
+    packageType: ['RPM', 'Flatpak', 'AppImage'],
+    architecture: ['x86_64', 'ARM64'],
+    basedOn: 'Independent',
+    releaseModel: 'Fixed/Rolling',
+    features: ['YaST Configuration', 'Btrfs Default', 'Professional Tools', 'SUSE Backing']
   }
 ]
 
@@ -93,6 +123,8 @@ function App() {
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [selectedDistro, setSelectedDistro] = useState<Distribution | null>(null)
+  const [compareMode, setCompareMode] = useState(false)
+  const [compareList, setCompareList] = useState<Distribution[]>([])
 
   const filteredDistributions = mockDistributions.filter(distro => {
     const matchesSearch = distro.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -100,6 +132,14 @@ function App() {
     const matchesCategory = selectedCategory === 'All' || distro.category === selectedCategory
     return matchesSearch && matchesCategory
   })
+
+  const toggleCompare = (distro: Distribution) => {
+    if (compareList.find(d => d.id === distro.id)) {
+      setCompareList(compareList.filter(d => d.id !== distro.id))
+    } else if (compareList.length < 3) {
+      setCompareList([...compareList, distro])
+    }
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -193,7 +233,7 @@ function App() {
             </div>
 
             {/* Category Filters */}
-            <div className="flex flex-wrap justify-center gap-4">
+            <div className="flex flex-wrap justify-center gap-4 mb-6">
               {categories.map((category) => (
                 <Button
                   key={category}
@@ -207,6 +247,28 @@ function App() {
                   {category}
                 </Button>
               ))}
+            </div>
+
+            {/* Compare Mode Toggle */}
+            <div className="flex justify-center gap-4">
+              <Button
+                onClick={() => setCompareMode(!compareMode)}
+                className={`brutalist-button ${
+                  compareMode 
+                    ? 'bg-yellow-400 text-black' 
+                    : 'bg-white text-black hover:bg-yellow-400 hover:text-black'
+                }`}
+              >
+                {compareMode ? 'EXIT COMPARE' : 'COMPARE MODE'}
+              </Button>
+              {compareList.length > 1 && (
+                <Button
+                  onClick={() => setSelectedDistro({ id: 'compare', name: 'Compare', description: '', rank: 0, rating: 0, downloads: '', lastUpdate: '', category: '', logo: '', popularity: 0, website: '', packageType: [], architecture: [], basedOn: '', releaseModel: '', features: [] })}
+                  className="brutalist-button bg-green-400 text-black hover:bg-green-500"
+                >
+                  COMPARE ({compareList.length})
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -247,8 +309,10 @@ function App() {
             {filteredDistributions.map((distro) => (
               <div
                 key={distro.id}
-                className="brutalist-card cursor-pointer hover:translate-x-1 hover:translate-y-1 transition-transform duration-200"
-                onClick={() => setSelectedDistro(distro)}
+                className={`brutalist-card cursor-pointer hover:translate-x-1 hover:translate-y-1 transition-transform duration-200 ${
+                  compareList.find(d => d.id === distro.id) ? 'ring-4 ring-yellow-400' : ''
+                }`}
+                onClick={() => compareMode ? toggleCompare(distro) : setSelectedDistro(distro)}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center space-x-3">
@@ -293,10 +357,27 @@ function App() {
                   </div>
                 </div>
                 
-                <div className="mt-4">
-                  <Badge variant="outline" className="font-mono text-xs border-2 border-black">
-                    {distro.category}
-                  </Badge>
+                <div className="mt-4 space-y-2">
+                  <div className="flex flex-wrap gap-1">
+                    <Badge variant="outline" className="font-mono text-xs border-2 border-black">
+                      {distro.category}
+                    </Badge>
+                    <Badge className="bg-blue-500 text-white font-mono text-xs">
+                      {distro.releaseModel}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {distro.packageType.slice(0, 2).map((pkg) => (
+                      <Badge key={pkg} className="bg-gray-800 text-white font-mono text-xs">
+                        {pkg}
+                      </Badge>
+                    ))}
+                    {distro.packageType.length > 2 && (
+                      <Badge className="bg-gray-600 text-white font-mono text-xs">
+                        +{distro.packageType.length - 2}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -359,9 +440,9 @@ function App() {
       </footer>
 
       {/* Distribution Detail Modal */}
-      {selectedDistro && (
+      {selectedDistro && selectedDistro.id !== 'compare' && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="brutalist-card max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="brutalist-card max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center space-x-4">
                 <div className="text-4xl">{selectedDistro.logo}</div>
@@ -382,52 +463,256 @@ function App() {
               </Button>
             </div>
             
-            <div className="space-y-6">
-              <div>
-                <h3 className="font-mono font-bold uppercase mb-2">DESCRIPTION</h3>
-                <p className="font-mono text-sm">{selectedDistro.description}</p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="space-y-6">
                 <div>
-                  <h3 className="font-mono font-bold uppercase mb-2">RATING</h3>
-                  <div className="flex items-center space-x-2">
-                    <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                    <span className="font-mono font-bold text-lg">{selectedDistro.rating}/5</span>
+                  <h3 className="font-mono font-bold uppercase mb-2 flex items-center gap-2">
+                    <Package size={16} />
+                    DESCRIPTION
+                  </h3>
+                  <p className="font-mono text-sm">{selectedDistro.description}</p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="font-mono font-bold uppercase mb-2">RATING</h3>
+                    <div className="flex items-center space-x-2">
+                      <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                      <span className="font-mono font-bold text-lg">{selectedDistro.rating}/5</span>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-mono font-bold uppercase mb-2">DOWNLOADS</h3>
+                    <div className="font-mono font-bold text-lg">{selectedDistro.downloads}</div>
                   </div>
                 </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="font-mono font-bold uppercase mb-2">LAST UPDATE</h3>
+                    <div className="font-mono">{new Date(selectedDistro.lastUpdate).toLocaleDateString()}</div>
+                  </div>
+                  <div>
+                    <h3 className="font-mono font-bold uppercase mb-2">POPULARITY</h3>
+                    <div className="font-mono font-bold">{selectedDistro.popularity}%</div>
+                  </div>
+                </div>
+                
                 <div>
-                  <h3 className="font-mono font-bold uppercase mb-2">DOWNLOADS</h3>
-                  <div className="font-mono font-bold text-lg">{selectedDistro.downloads}</div>
+                  <h3 className="font-mono font-bold uppercase mb-2">CATEGORY</h3>
+                  <Badge variant="outline" className="font-mono border-2 border-black">
+                    {selectedDistro.category}
+                  </Badge>
                 </div>
               </div>
-              
-              <div className="grid grid-cols-2 gap-4">
+
+              <div className="space-y-6">
                 <div>
-                  <h3 className="font-mono font-bold uppercase mb-2">LAST UPDATE</h3>
-                  <div className="font-mono">{new Date(selectedDistro.lastUpdate).toLocaleDateString()}</div>
+                  <h3 className="font-mono font-bold uppercase mb-2 flex items-center gap-2">
+                    <GitBranch size={16} />
+                    TECHNICAL INFO
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="font-mono text-sm font-bold">BASED ON:</span>
+                      <span className="font-mono text-sm ml-2">{selectedDistro.basedOn}</span>
+                    </div>
+                    <div>
+                      <span className="font-mono text-sm font-bold">RELEASE MODEL:</span>
+                      <span className="font-mono text-sm ml-2">{selectedDistro.releaseModel}</span>
+                    </div>
+                  </div>
                 </div>
+
                 <div>
-                  <h3 className="font-mono font-bold uppercase mb-2">POPULARITY</h3>
-                  <div className="font-mono font-bold">{selectedDistro.popularity}%</div>
+                  <h3 className="font-mono font-bold uppercase mb-2 flex items-center gap-2">
+                    <Package size={16} />
+                    PACKAGE TYPES
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedDistro.packageType.map((pkg) => (
+                      <Badge key={pkg} className="bg-gray-800 text-white font-mono text-xs">
+                        {pkg}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-mono font-bold uppercase mb-2 flex items-center gap-2">
+                    <Zap size={16} />
+                    ARCHITECTURES
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedDistro.architecture.map((arch) => (
+                      <Badge key={arch} className="bg-blue-600 text-white font-mono text-xs">
+                        {arch}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-mono font-bold uppercase mb-2 flex items-center gap-2">
+                    <Shield size={16} />
+                    KEY FEATURES
+                  </h3>
+                  <div className="space-y-1">
+                    {selectedDistro.features.map((feature) => (
+                      <div key={feature} className="font-mono text-sm flex items-center gap-2">
+                        <span className="w-2 h-2 bg-black"></span>
+                        {feature}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-              
-              <div>
-                <h3 className="font-mono font-bold uppercase mb-2">CATEGORY</h3>
-                <Badge variant="outline" className="font-mono border-2 border-black">
-                  {selectedDistro.category}
-                </Badge>
-              </div>
-              
-              <div className="flex space-x-4">
-                <Button className="brutalist-button flex-1">
-                  VISIT WEBSITE
-                </Button>
-                <Button className="brutalist-button flex-1">
-                  WRITE REVIEW
-                </Button>
-              </div>
+            </div>
+            
+            <div className="flex space-x-4 mt-8">
+              <Button className="brutalist-button flex-1">
+                VISIT WEBSITE
+              </Button>
+              <Button className="brutalist-button flex-1">
+                WRITE REVIEW
+              </Button>
+              <Button 
+                className="brutalist-button"
+                onClick={() => toggleCompare(selectedDistro)}
+              >
+                {compareList.find(d => d.id === selectedDistro.id) ? 'REMOVE FROM COMPARE' : 'ADD TO COMPARE'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Comparison Modal */}
+      {selectedDistro && selectedDistro.id === 'compare' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="brutalist-card max-w-7xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between mb-6">
+              <h2 className="text-2xl font-mono font-bold uppercase">DISTRIBUTION COMPARISON</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedDistro(null)}
+                className="brutalist-button"
+              >
+                <X size={20} />
+              </Button>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full font-mono text-sm">
+                <thead>
+                  <tr className="border-b-2 border-black">
+                    <th className="text-left p-4 font-bold uppercase">FEATURE</th>
+                    {compareList.map((distro) => (
+                      <th key={distro.id} className="text-center p-4 font-bold uppercase min-w-[200px]">
+                        <div className="flex flex-col items-center space-y-2">
+                          <div className="text-2xl">{distro.logo}</div>
+                          <div>{distro.name}</div>
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-gray-300">
+                    <td className="p-4 font-bold">RANK</td>
+                    {compareList.map((distro) => (
+                      <td key={distro.id} className="p-4 text-center">#{distro.rank}</td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-300">
+                    <td className="p-4 font-bold">RATING</td>
+                    {compareList.map((distro) => (
+                      <td key={distro.id} className="p-4 text-center">{distro.rating}/5</td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-300">
+                    <td className="p-4 font-bold">CATEGORY</td>
+                    {compareList.map((distro) => (
+                      <td key={distro.id} className="p-4 text-center">{distro.category}</td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-300">
+                    <td className="p-4 font-bold">BASED ON</td>
+                    {compareList.map((distro) => (
+                      <td key={distro.id} className="p-4 text-center">{distro.basedOn}</td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-300">
+                    <td className="p-4 font-bold">RELEASE MODEL</td>
+                    {compareList.map((distro) => (
+                      <td key={distro.id} className="p-4 text-center">{distro.releaseModel}</td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-300">
+                    <td className="p-4 font-bold">PACKAGE TYPES</td>
+                    {compareList.map((distro) => (
+                      <td key={distro.id} className="p-4 text-center">
+                        <div className="flex flex-wrap gap-1 justify-center">
+                          {distro.packageType.map((pkg) => (
+                            <Badge key={pkg} className="bg-gray-800 text-white text-xs">
+                              {pkg}
+                            </Badge>
+                          ))}
+                        </div>
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-300">
+                    <td className="p-4 font-bold">ARCHITECTURES</td>
+                    {compareList.map((distro) => (
+                      <td key={distro.id} className="p-4 text-center">
+                        <div className="flex flex-wrap gap-1 justify-center">
+                          {distro.architecture.map((arch) => (
+                            <Badge key={arch} className="bg-blue-600 text-white text-xs">
+                              {arch}
+                            </Badge>
+                          ))}
+                        </div>
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-gray-300">
+                    <td className="p-4 font-bold">POPULARITY</td>
+                    {compareList.map((distro) => (
+                      <td key={distro.id} className="p-4 text-center">{distro.popularity}%</td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-bold">KEY FEATURES</td>
+                    {compareList.map((distro) => (
+                      <td key={distro.id} className="p-4">
+                        <div className="space-y-1">
+                          {distro.features.map((feature) => (
+                            <div key={feature} className="text-xs flex items-center gap-1">
+                              <span className="w-1 h-1 bg-black"></span>
+                              {feature}
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <div className="flex justify-center mt-6">
+              <Button 
+                className="brutalist-button"
+                onClick={() => {
+                  setCompareList([])
+                  setSelectedDistro(null)
+                  setCompareMode(false)
+                }}
+              >
+                CLEAR COMPARISON
+              </Button>
             </div>
           </div>
         </div>
